@@ -67,7 +67,7 @@ docker-compose up --build
 
   - A number
   - A time series line chart
-  - A table (first 10 rows)
+  - A table (unformatted)
 
 ---
 
