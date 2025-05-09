@@ -6,45 +6,51 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from random import randint, sample, choice
 import csv
-from time import sleep
 import math
+import asyncio
 
 app = FastAPI(debug=True)
 
 CSV_LINES = 10000
 CSV_FILE_PATH = "./TabularData.csv"
 SAMPLE_SIZE = 250
-MAX_LATENCY = 0
+MAX_LATENCY = 30
 
 
-@app.get("/random_integer")
+@app.get("/random-int")
 async def get_random_integer():
-    add_latency()
+    await latency()
     return randint(0, CSV_LINES)
 
 
-@app.get("/tabular")
+@app.get("/table")
 async def get_tabular_data():
-    add_latency()
+    await latency()
     try:
         return JSONResponse(content=sample_csv_rows())
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-@app.get("/time_series")
+@app.get("/time-series")
 async def get_time_series():
     """ """
-    add_latency()
-    f = choice([generate_time_series_x, generate_time_series_y, generate_time_series_z])
+    await latency()
+    f = choice(
+        [
+            generate_time_series_x,
+            generate_time_series_y,
+            generate_time_series_z,
+        ]
+    )
     return f()
 
 
-def add_latency() -> None:
+async def latency() -> None:
     """
     Randomly simulates latency between 0 and 30 seconds.
     """
-    sleep(randint(0, MAX_LATENCY))
+    await asyncio.sleep(randint(0, MAX_LATENCY))
 
 
 def sample_csv_rows(
@@ -62,7 +68,7 @@ def sample_csv_rows(
 
 def generate_time_series_x(
     step: float = 0.1, duration: float = 300.0
-) -> list[tuple[float, float]]:
+) -> list[dict[str, float]]:
     """
     Generates time series data using the function X(t) = 2 * sin(pi * t / 30)
 
@@ -79,7 +85,7 @@ def generate_time_series_x(
     for i in range(num_points + 1):
         t = round(i * step, 3)  # rounding for clean float values
         x = 2 * math.sin(math.pi * t / 30)
-        data.append((t, x))
+        data.append({"t": t, "value": x})
 
     return data
 
@@ -103,7 +109,7 @@ def generate_time_series_y(
     for i in range(num_points + 1):
         t = round(i * step, 3)
         y = 5 * (1 - math.exp(-t / 60))
-        data.append((t, y))
+        data.append({"t": t, "value": y})
 
     return data
 
@@ -128,9 +134,9 @@ def generate_time_series_z(
     y_series = generate_time_series_y(step, duration)
 
     data = []
-    for (t1, x), (t2, y) in zip(x_series, y_series):
-        assert t1 == t2, "Timestamps do not match!"
-        z = x * y
-        data.append((t1, z))
+    for x, y in zip(x_series, y_series):
+        assert x["t"] == y["t"], "Timestamps do not match!"
+        z = x["value"] * y["value"]
+        data.append({"t": x["t"], "value": z})
 
     return data
